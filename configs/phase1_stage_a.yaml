@@ -1,0 +1,38 @@
+# Phase 1 Stage A: Bar-On & Mansour (2312.06448) replication
+# Single rollup, fixed batch, binary action, log-normal RW prices
+# Goal: DQN should recover threshold lambda(x) = 2*alpha*x / (1 - gamma)
+
+env:
+  queue_mode: "fixed_batch"
+  action_mode: "binary"
+  cost_mode: "bar_on_mansour"
+  reward_mode: "on_post_only"
+  max_steps: 50000
+  log_transform_prices: true
+  seed: 42
+
+rollup:
+  alpha_i: 1.0
+  gamma: 0.995                    # near-unity discounting per Bar-On & Mansour
+
+price_process:
+  type: "log_normal_rw"
+  ln_mu: 0.0                      # martingale (mu = -sigma^2/2 for true martingale)
+  ln_sigma: 0.1
+  initial_price: 1.0              # normalized price
+
+blob_fee_process:
+  type: "exogenous_log_normal_rw"
+  mu: 1.0
+  theta: 0.05
+  sigma: 0.2
+  initial_fee: 1.0
+
+rl:
+  algorithm: "DQN"
+  learning_rate: 1.0e-4
+  buffer_size: 100000
+  batch_size: 64
+  exploration_fraction: 0.3
+  target_update_interval: 1000
+  total_timesteps: 500000

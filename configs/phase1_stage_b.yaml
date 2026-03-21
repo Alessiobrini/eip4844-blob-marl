@@ -1,0 +1,43 @@
+# Phase 1 Stage B: Shouqiao et al. (2505.19556) setup
+# Single rollup, Poisson arrivals, discrete blobs, AR(1) prices
+# Goal: DQN should recover threshold Q*(P_t), decreasing in price
+
+env:
+  queue_mode: "poisson_arrival"
+  action_mode: "discrete_blobs"
+  cost_mode: "linear_overhead"
+  reward_mode: "per_step"
+  max_steps: 10000
+  log_transform_prices: true
+  seed: 42
+
+rollup:
+  lambda_i: 180.0                 # tx/block (Shouqiao calibration)
+  alpha_i: 1.0
+  d_i: 500                        # bytes per tx
+  gamma: 0.99
+
+price_process:
+  type: "ar1"
+  mu: 3.86e-8
+  theta: 0.1
+  sigma: 8.41e-9
+  initial_price: 3.86e-8
+  floor: 0.0
+
+blob_fee_process:
+  type: "exogenous_ar1"
+  mu: 1.0
+  theta: 0.05
+  sigma: 0.2
+  initial_fee: 1.0
+  floor: 1.0
+
+rl:
+  algorithm: "DQN"
+  learning_rate: 1.0e-4
+  buffer_size: 100000
+  batch_size: 64
+  exploration_fraction: 0.3
+  target_update_interval: 1000
+  total_timesteps: 500000

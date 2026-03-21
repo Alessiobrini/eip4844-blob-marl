@@ -1,0 +1,47 @@
+env:
+  queue_mode: "poisson_arrival"    # "fixed_batch" | "poisson_arrival"
+  action_mode: "discrete_blobs"   # "binary" | "discrete_blobs"
+  cost_mode: "linear_overhead"    # "bar_on_mansour" | "linear_overhead" | "quadratic_delay"
+  reward_mode: "per_step"         # "per_step" | "on_post_only"
+  max_steps: 10000
+  blob_fee_floor: 1               # 1-wei minimum per EIP-4844
+  gas_fixed: 21000                # intrinsic gas cost of type-3 tx
+  blob_target: 3                  # EIP-4844 target blobs per block
+  blob_max: 6                     # EIP-4844 max blobs per block
+  log_transform_prices: true      # log-transform prices in observation space
+  seed: 42
+
+rollup:
+  lambda_i: 180.0                 # tx/block arrival rate (Poisson mode)
+  alpha_i: 1.0                    # delay cost coefficient
+  d_i: 500                        # bytes per transaction
+  gamma: 0.99                     # discount factor
+
+price_process:
+  type: "ar1"                     # "log_normal_rw" | "ar1"
+  # AR(1) parameters (Shouqiao et al. calibration, Feb-Aug 2024)
+  mu: 3.86e-8                     # long-run mean gas price (wei/gas)
+  theta: 0.1                      # mean-reversion speed
+  sigma: 8.41e-9                  # volatility
+  initial_price: 3.86e-8
+  floor: 0.0                      # non-negativity clamp
+  # Log-normal RW parameters (Bar-On & Mansour)
+  ln_mu: 0.0                      # drift (0 = martingale)
+  ln_sigma: 0.1                   # volatility
+
+blob_fee_process:
+  type: "exogenous_ar1"           # "exogenous_ar1" | "exogenous_log_normal_rw" | "endogenous"
+  mu: 1.0
+  theta: 0.05
+  sigma: 0.2
+  initial_fee: 1.0
+  floor: 1.0                      # 1-wei minimum
+
+rl:
+  algorithm: "DQN"
+  learning_rate: 1.0e-4
+  buffer_size: 100000
+  batch_size: 64
+  exploration_fraction: 0.3
+  target_update_interval: 1000
+  total_timesteps: 500000
