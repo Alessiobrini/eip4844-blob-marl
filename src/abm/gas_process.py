@@ -111,6 +111,60 @@ class AR1Process(PriceProcess):
         return self._price
 
 
+class LogAR1Process(PriceProcess):
+    """AR(1) in log-space: log(P_{t+1}) = theta*mu + (1-theta)*log(P_t) + sigma*eps.
+
+    Equivalent to multiplicative dynamics.  Exponentiating gives:
+    P_{t+1} = exp(theta*mu + (1-theta)*log(P_t) + sigma*eps)
+
+    This matches the structure of the EIP-4844 blob base fee update rule,
+    which is multiplicative (B_{t+1} = B_t * exp(...)).
+
+    Args:
+        mu: Long-run mean of log-price.
+        theta: Mean-reversion speed in log-space (0 < theta < 1).
+        sigma: Innovation volatility in log-space.
+        initial_price: Starting price (in level space, must be positive).
+        floor: Minimum price (level space). Default 1.0.
+        seed: Random seed for reproducibility.
+    """
+
+    def __init__(
+        self,
+        mu: float,
+        theta: float,
+        sigma: float,
+        initial_price: float,
+        floor: float = 1.0,
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(initial_price, seed)
+        self.mu = mu
+        self.theta = theta
+        self.sigma = sigma
+        self.floor = floor
+        self._log_price = math.log(max(initial_price, 1e-18))
+
+    def step(self) -> float:
+        """Advance one block via AR(1) update in log-space."""
+        eps = self._rng.normal()
+        self._log_price = (
+            self.theta * self.mu
+            + (1 - self.theta) * self._log_price
+            + self.sigma * eps
+        )
+        self._price = math.exp(self._log_price)
+        if self.floor is not None:
+            self._price = max(self.floor, self._price)
+        return self._price
+
+    def reset(self) -> float:
+        """Reset to initial price and return it."""
+        self._price = self._initial_price
+        self._log_price = math.log(max(self._initial_price, 1e-18))
+        return self._price
+
+
 def create_price_process(cfg: DictConfig, seed: int | None = None) -> PriceProcess:
     """Factory: create a PriceProcess from a config block.
 
@@ -141,6 +195,16 @@ def create_price_process(cfg: DictConfig, seed: int | None = None) -> PriceProce
             sigma=cfg.sigma,
             initial_price=cfg.get("initial_price", cfg.get("initial_fee", cfg.mu)),
             floor=cfg.get("floor", 0.0),
+            seed=seed,
+        )
+
+    if ptype == "exogenous_log_ar1":
+        return LogAR1Process(
+            mu=cfg.mu,
+            theta=cfg.theta,
+            sigma=cfg.sigma,
+            initial_price=cfg.get("initial_price", cfg.get("initial_fee", math.exp(cfg.mu))),
+            floor=cfg.get("floor", 1.0),
             seed=seed,
         )
 
