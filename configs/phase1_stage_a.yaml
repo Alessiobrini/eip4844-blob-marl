@@ -6,9 +6,10 @@ env:
   queue_mode: "fixed_batch"
   action_mode: "binary"
   cost_mode: "bar_on_mansour"
-  reward_mode: "on_post_only"
-  max_steps: 50000
-  log_transform_prices: true
+  reward_mode: "per_step"
+  max_steps: 5000
+  gas_fixed: 1                    # normalized (Bar-On & Mansour units)
+  log_transform_prices: false     # prices already normalized around 1.0
   seed: 42
 
 rollup:

@@ -54,7 +54,7 @@ def evaluate_policy(
 
         while not done:
             action_arr, _ = policy.predict(obs, deterministic=True)
-            action = int(action_arr[0]) if hasattr(action_arr, '__len__') else int(action_arr)
+            action = int(action_arr.item()) if hasattr(action_arr, 'item') else int(action_arr)
             obs, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
             steps += 1

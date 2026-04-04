@@ -1,6 +1,10 @@
 # Phase 1 Stage B: Shouqiao et al. (2505.19556) setup
-# Single rollup, Poisson arrivals, discrete blobs, AR(1) prices
+# Single rollup, Poisson arrivals, discrete blobs, calibrated AR(1) prices
 # Goal: DQN should recover threshold Q*(P_t), decreasing in price
+#
+# price_process and blob_fee_process params come from calibration.yaml
+# (merged automatically by phase1_single_agent.py). Only type overrides
+# are specified here to select the correct process class.
 
 env:
   queue_mode: "poisson_arrival"
@@ -12,26 +16,18 @@ env:
   seed: 42
 
 rollup:
-  lambda_i: 180.0                 # tx/block (Shouqiao calibration)
+  lambda_i: 0.36                  # Base rollup rate (calibrated, tx/block)
   alpha_i: 1.0
   d_i: 500                        # bytes per tx
   gamma: 0.99
 
+# AR(1) gas price — params from calibration.yaml
 price_process:
   type: "ar1"
-  mu: 3.86e-8
-  theta: 0.1
-  sigma: 8.41e-9
-  initial_price: 3.86e-8
-  floor: 0.0
 
+# Log-AR(1) blob fee — matches EIP-4844 multiplicative dynamics
 blob_fee_process:
-  type: "exogenous_ar1"
-  mu: 1.0
-  theta: 0.05
-  sigma: 0.2
-  initial_fee: 1.0
-  floor: 1.0
+  type: "exogenous_log_ar1"
 
 rl:
   algorithm: "DQN"

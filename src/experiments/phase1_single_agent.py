@@ -25,8 +25,12 @@ def main() -> None:
     )
     args, overrides = parser.parse_known_args()
 
-    # Load base config, then merge stage-specific config, then CLI overrides
+    # Load base config, merge calibration if available, then stage config
     base_cfg = OmegaConf.load("configs/base.yaml")
+    cal_path = Path("configs/calibration.yaml")
+    if cal_path.exists():
+        cal_cfg = OmegaConf.load(cal_path)
+        base_cfg = OmegaConf.merge(base_cfg, cal_cfg)
     stage_cfg = OmegaConf.load(args.config)
     cfg = OmegaConf.merge(base_cfg, stage_cfg)
 
