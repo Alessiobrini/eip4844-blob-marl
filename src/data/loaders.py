@@ -77,8 +77,8 @@ def load_block_fees(
         parse_dates=["timestamp"],
         dtype={
             "block_number": "int64",
-            "excess_blob_gas": "int64",
-            "blob_gas_used": "int64",
+            "excess_blob_gas": "Int64",   # nullable int (NA-safe)
+            "blob_gas_used": "Int64",     # nullable int (NA-safe)
         },
     )
 

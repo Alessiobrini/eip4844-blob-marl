@@ -1,0 +1,42 @@
+calibration_window:
+  start_date: '2024-03-13'
+  end_date: '2024-08-31'
+  n_blocks: 1218246
+  generated: '2026-04-04T03:06:07.426246+00:00'
+price_process:
+  type: ar1
+  mu: 1.0940601050568635e-08
+  theta: 0.0021400404810613116
+  sigma: 9.85356330914817e-10
+  initial_price: 1.0940601050568635e-08
+  floor: 0.0
+  r_squared: 0.9957334598726325
+  adf_pvalue: 0.0
+  half_life_blocks: 323.5477274159656
+  ljung_box_pvalue: 0.0
+blob_fee_process:
+  type: exogenous_log_ar1
+  mu: 1.5333441014460887
+  theta: 0.00012417200661407612
+  sigma: 0.08102589729543501
+  initial_fee: 1.0043280508710337
+  floor: 1.0
+  r_squared: 0.9997516714082145
+  adf_pvalue: 0.0004653507252006788
+  half_life_blocks: 5581.806752026483
+  ljung_box_pvalue: 0.0
+rollup_arrival:
+  mu_lambda: -3.247472233291093
+  sigma_lambda: 1.460981873002404
+  n_rollups: 9
+  ks_pvalue: 0.9395951838084088
+  rollup_rates:
+    base: 0.3613326044165136
+    arbitrum_one: 0.21834752586915943
+    optimism: 0.07633023215344027
+    starknet: 0.05830924131907677
+    blast: 0.0444031829367796
+    zksync_era: 0.03081315268016476
+    zora: 0.00963926825944842
+    mode: 0.009205858258512648
+    scroll: 0.004753555521626995
