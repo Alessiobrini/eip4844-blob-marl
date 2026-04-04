@@ -162,6 +162,11 @@ class BlobMarketEnv(gymnasium.Env):
         else:  # per_step
             reward = -(delay_cost + posting_cost)
 
+        # 6. Reward scaling (divide by a constant to keep magnitudes DQN-friendly)
+        reward_scale = self.cfg.env.get("reward_scale", 1.0)
+        if reward_scale != 1.0:
+            reward = reward / reward_scale
+
         # 6. Update exogenous prices
         self.gas_price = self.gas_process.step()
         self.blob_fee = self.blob_fee_process.step()
