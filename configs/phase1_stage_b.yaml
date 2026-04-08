@@ -5,6 +5,11 @@
 # price_process and blob_fee_process params come from calibration.yaml
 # (merged automatically by phase1_single_agent.py). Only type overrides
 # are specified here to select the correct process class.
+#
+# Cost normalization: both delay and posting costs are divided by C_ref
+# (average posting cost) so that all reward terms are O(1). alpha_i is
+# then in normalized units where 1.0 means "each queued tx costs one
+# full posting-cost per block of delay."
 
 env:
   queue_mode: "poisson_arrival"
@@ -13,11 +18,16 @@ env:
   reward_mode: "per_step"
   max_steps: 10000
   log_transform_prices: true
+  # C_ref ≈ gas_price * gas_fixed = 1.09e-8 * 21000 ≈ 2.29e-4 ETH ≈ 2.29e14 wei
+  # At blob fee floor, blob cost is negligible vs gas cost
+  cost_normalization: 2.29e14
   seed: 42
 
 rollup:
   lambda_i: 0.36                  # Base rollup rate (calibrated, tx/block)
-  alpha_i: 1.0
+  alpha_i: 1.6534e14              # Calibrated in wei: 2 * C_post * lambda
+                                  # where C_post ≈ 2.29e14 wei. After
+                                  # cost_normalization, effective alpha ≈ 0.72.
   d_i: 500                        # bytes per tx
   gamma: 0.99
 

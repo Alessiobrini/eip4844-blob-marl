@@ -153,7 +153,13 @@ class BlobMarketEnv(gymnasium.Env):
                     cost_mode=self.cfg.env.cost_mode,
                 )
 
-        # 5. Reward
+        # 5. Cost normalization (divide both costs by C_ref so they are O(1))
+        cost_norm = self.cfg.env.get("cost_normalization", 1.0)
+        if cost_norm != 1.0:
+            delay_cost = delay_cost / cost_norm
+            posting_cost = posting_cost / cost_norm
+
+        # 6. Reward
         if self.cfg.env.reward_mode == "on_post_only":
             if did_post:
                 reward = -(delay_cost + posting_cost)
@@ -161,11 +167,6 @@ class BlobMarketEnv(gymnasium.Env):
                 reward = 0.0
         else:  # per_step
             reward = -(delay_cost + posting_cost)
-
-        # 6. Reward scaling (divide by a constant to keep magnitudes DQN-friendly)
-        reward_scale = self.cfg.env.get("reward_scale", 1.0)
-        if reward_scale != 1.0:
-            reward = reward / reward_scale
 
         # 6. Update exogenous prices
         self.gas_price = self.gas_process.step()
