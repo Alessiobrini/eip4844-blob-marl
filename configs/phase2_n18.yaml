@@ -1,0 +1,70 @@
+# Phase 2: full 18-rollup roster, congested regime.
+#
+# Uses the same base/env block as phase2.yaml but enumerates every
+# rollup in the calibration dataset. lambda_scale chosen so aggregate
+# demand sits just above target (sum_lambdas = 2.49 tx/block,
+# scaled to ~750 tx/block ~ 2.86 blobs/block of demand).
+
+env:
+  queue_mode: "poisson_arrival"
+  action_mode: "discrete_blobs"
+  cost_mode: "linear_overhead"
+  reward_mode: "per_step"
+  max_steps: 2000
+  blob_fee_floor: 1
+  blob_fee_ceiling: 1.0e12
+  gas_fixed: 21000
+  blob_target: 3
+  blob_max: 6
+  log_transform_prices: true
+  cost_normalization: 2.29e14
+  normalize_queue_by_blob_capacity: true
+  reward_scale: 1.0e-2
+  seed: 42
+
+blob_fee_init:
+  initial_fee: 1.0
+  floor: 1.0
+
+price_process:
+  type: "ar1"
+
+rollups:
+  labels:
+    - taiko
+    - base
+    - arbitrum_one
+    - scroll
+    - world_chain
+    - metal
+    - zircuit
+    - optimism
+    - starknet
+    - paradex
+    - linea
+    - blast
+    - kroma
+    - zksync_era
+    - river
+    - mint
+    - zora
+    - mode
+  alpha_scale: 1.0
+  lambda_scale: 300
+  d_i: 500
+  gamma: 0.99
+
+rl:
+  algorithm: "IndependentPPO"
+  total_timesteps: 100000
+  rollout_steps: 2000
+  n_epochs: 4
+  batch_size: 256
+  learning_rate: 3.0e-4
+  clip_coef: 0.2
+  vf_coef: 0.5
+  ent_coef: 0.01
+  gae_lambda: 0.95
+  max_grad_norm: 0.5
+  hidden_dim: 64
+  log_interval: 1

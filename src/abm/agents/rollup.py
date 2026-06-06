@@ -104,6 +104,25 @@ class RollupAgent(mesa.Agent):
             self.waiting_time = 0
             return 1  # always 1 "blob" in fixed-batch mode
 
+    def post_calldata(self) -> int:
+        """Post the entire queue via L1 calldata (no blob).
+
+        Calldata has effectively unbounded capacity per transaction but is
+        priced per-byte at the L1 gas rate, so it is usually more expensive
+        than blobs at low blob fees and cheaper when the blob fee is high.
+
+        Returns:
+            Number of transactions drained from the queue.
+        """
+        if self.queue_mode == "poisson_arrival":
+            drained = self.queue
+            self.queue = 0
+            return drained
+        # fixed_batch mode: a calldata post resets the waiting time,
+        # analogous to a normal post.
+        self.waiting_time = 0
+        return 1
+
     def compute_delay_cost(self, cost_mode: str = "linear_overhead") -> float:
         """Compute current-step delay cost.
 

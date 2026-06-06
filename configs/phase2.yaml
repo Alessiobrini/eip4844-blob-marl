@@ -1,0 +1,66 @@
+# Phase 2: multi-rollup MARL with endogenous blob base fee.
+#
+# N heterogeneous rollups. Each runs an independent PPO. The blob base
+# fee evolves via the EIP-4844 rule (update_blob_base_fee) applied to
+# aggregated blobs per block. Gas price is still an exogenous AR(1)
+# drawn from the calibration window.
+#
+# Rollups are drawn from configs/calibration.yaml:rollup_rates.
+# For the MVP smoke run we use the top-5 rollups by arrival rate.
+#
+# alpha_i is calibrated via revealed preference: alpha_i = 2 * C_ref * lambda_i
+# (same rule as Phase 1 Stage B). We scale costs by cost_normalization so
+# reward terms are O(1).
+
+env:
+  queue_mode: "poisson_arrival"
+  action_mode: "discrete_blobs"
+  cost_mode: "linear_overhead"
+  reward_mode: "per_step"
+  max_steps: 2000                  # rollout length per training episode
+  blob_fee_floor: 1                # 1-wei EIP-4844 floor
+  blob_fee_ceiling: 1.0e12         # numerical stability cap; non-binding at convergence
+  gas_fixed: 21000
+  blob_target: 3
+  blob_max: 6
+  log_transform_prices: true
+  cost_normalization: 2.29e14      # same C_ref as Phase 1 Stage B
+  normalize_queue_by_blob_capacity: true  # queue obs in blob-units, keeps O(1)
+  reward_scale: 1.0                # multiply reward (use <1 in congested regimes)
+  seed: 42
+
+# Initial blob base fee for each episode. The fee then evolves
+# endogenously via the EIP-4844 rule.
+blob_fee_init:
+  initial_fee: 1.0                 # start at floor (wei)
+  floor: 1.0
+
+# Gas price process — exogenous AR(1) (params merged from calibration.yaml)
+price_process:
+  type: "ar1"
+
+# Rollup roster. Each entry supplies (label, lambda_i). alpha_i is
+# derived from lambda_i at env-construction time via:
+#   alpha_i = alpha_scale * 2 * C_ref * lambda_i
+# alpha_scale=1.0 reproduces the Phase 1 Stage B calibration exactly.
+rollups:
+  labels: ["taiko", "base", "arbitrum_one", "scroll", "world_chain"]
+  alpha_scale: 1.0
+  lambda_scale: 1.0                # multiply empirical arrival rates (congestion stress)
+  d_i: 500                         # bytes per tx (homogeneous across rollups)
+  gamma: 0.99
+
+rl:
+  algorithm: "IndependentPPO"
+  total_timesteps: 20000           # MVP smoke run; scale up after
+  rollout_steps: 2000              # = env.max_steps (one episode per update)
+  n_epochs: 4
+  batch_size: 256
+  learning_rate: 3.0e-4
+  clip_coef: 0.2
+  vf_coef: 0.5
+  ent_coef: 0.01
+  gae_lambda: 0.95
+  max_grad_norm: 0.5
+  hidden_dim: 64
+  log_interval: 1                  # log every rollout
