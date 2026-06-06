@@ -7,8 +7,9 @@ This is the single source of truth for the figures that ship in the paper
     python notebooks/paper_figures.py
 
 It reads the local results/ tree (model outputs, gitignored) and writes
-PDFs into paper/figures/. It also prints a VERIFICATION block with the
-headline statistics so the prose can be checked against the data.
+PDFs into paper/figures/. Headline results are reported as mean +/- s.d.
+across the 5-seed runs in results/multiseed/ (final-20% steady-state
+window); the phase diagram uses the 5-seed sweep in results/sweeps/.
 """
 
 from __future__ import annotations
@@ -20,11 +21,9 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-CALIB_RUN = ROOT / "results/phase2_20260424_115247_27b811d2"      # N=5, lambda x1
-CONG_RUN = ROOT / "results/phase2_20260424_142202_4d2b188e"       # N=5, lambda x100
-N18_RUN = ROOT / "results/phase2_20260424_144419_93861581"        # N=18, lambda x300
-CALLDATA_RUN = ROOT / "results/phase2_20260424_145217_fb53d192"   # N=5, x100, +calldata
-SWEEP_CSV = ROOT / "results/sweeps/phase_diagram_20260424_144835.csv"
+CALIB_RUN = ROOT / "results/phase2_20260424_115247_27b811d2"           # N=5, lambda x1
+SWEEP_CSV = ROOT / "results/sweeps/phase_diagram_20260606_150026.csv"  # 5-seed sweep
+MANIFEST = ROOT / "results/multiseed/manifest_20260606_151700.csv"     # 5-seed headline runs
 OUT = ROOT / "paper/figures"
 
 LAMBDA = {
@@ -36,8 +35,8 @@ LAMBDA = {
     "mint": 0.015, "zora": 0.010, "mode": 0.009,
 }
 N5 = ["taiko", "base", "arbitrum_one", "scroll", "world_chain"]
+TAIL_FRAC = 5  # final 1/TAIL_FRAC of rollouts = final 20% window
 
-# IEEE 2-column geometry (inches): \columnwidth ~3.5, \textwidth ~7.16.
 COL_W, FULL_W = 3.45, 7.0
 plt.rcParams.update({
     "font.size": 8, "font.family": "serif", "axes.titlesize": 8,
@@ -45,21 +44,44 @@ plt.rcParams.update({
     "ytick.labelsize": 7, "lines.linewidth": 1.2, "figure.dpi": 200,
 })
 
-
-def _tail_mean(df: pd.DataFrame, col: str, n: int) -> float:
-    return float(df[col].tail(n).mean())
+_man = pd.read_csv(MANIFEST)
 
 
-def fig_convergence() -> dict:
+def seed_dirs(config: str) -> list[Path]:
+    return [Path(d) for d in _man[_man.config == config]["results_dir"]]
+
+
+def _stack(dirs: list[Path], col: str) -> np.ndarray:
+    """Stack a per-step column across seed runs -> array (n_seeds, n_steps)."""
+    series = [pd.read_csv(d / "history.csv")[col].to_numpy() for d in dirs]
+    n = min(len(s) for s in series)
+    return np.vstack([s[:n] for s in series])
+
+
+def _tail_band(config: str, col: str) -> tuple[float, float]:
+    """Mean +/- s.d. across seeds of each run's final-20% mean."""
+    vals = []
+    for d in seed_dirs(config):
+        df = pd.read_csv(d / "history.csv")
+        vals.append(df[col].tail(max(1, len(df) // TAIL_FRAC)).mean())
+    return float(np.mean(vals)), float(np.std(vals))
+
+
+def fig_convergence() -> None:
     calib = pd.read_csv(CALIB_RUN / "history.csv")
-    cong = pd.read_csv(CONG_RUN / "history.csv")
+    cong_dirs = seed_dirs("n5_congested")
+    steps = pd.read_csv(cong_dirs[0] / "history.csv")["global_step"].to_numpy()
+    n = len(steps)
+    blobs = _stack(cong_dirs, "blobs_per_block_mean")[:, :n]
+    logfee = np.log(_stack(cong_dirs, "blob_fee_mean")[:, :n])
 
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.5), constrained_layout=True)
     ax = axes[0]
     ax.plot(calib["global_step"], calib["blobs_per_block_mean"],
             label=r"Calibrated ($\lambda{\times}1$)", color="C0")
-    ax.plot(cong["global_step"], cong["blobs_per_block_mean"],
-            label=r"Congested ($\lambda{\times}100$)", color="C3")
+    m, s = blobs.mean(0), blobs.std(0)
+    ax.plot(steps, m, color="C3", label=r"Congested ($\lambda{\times}100$)")
+    ax.fill_between(steps, m - s, m + s, color="C3", alpha=0.25)
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
                label=r"Target $b^*=3$")
     ax.set_xlabel("Training step")
@@ -70,32 +92,27 @@ def fig_convergence() -> dict:
 
     ax = axes[1]
     ax.semilogy(calib["global_step"], calib["blob_fee_mean"],
-                label="Calibrated", color="C0")
-    ax.semilogy(cong["global_step"], cong["blob_fee_mean"],
-                label=r"Congested ($\lambda{\times}100$)", color="C3")
+                label=r"Calibrated ($\lambda{\times}1$)", color="C0")
+    gm = np.exp(logfee.mean(0))
+    lo = np.exp(logfee.mean(0) - logfee.std(0))
+    hi = np.exp(logfee.mean(0) + logfee.std(0))
+    ax.semilogy(steps, gm, color="C3", label=r"Congested ($\lambda{\times}100$)")
+    ax.fill_between(steps, lo, hi, color="C3", alpha=0.25)
     ax.set_xlabel("Training step")
     ax.set_ylabel("Blob base fee (wei)")
     ax.set_title("(b) Endogenous blob base fee")
     ax.legend()
     ax.grid(alpha=0.3, which="both")
-
     fig.savefig(OUT / "fig_convergence.pdf")
     plt.close(fig)
-    return {
-        "calib_bpb_final": _tail_mean(calib, "blobs_per_block_mean", 5),
-        "cong_bpb_final": _tail_mean(cong, "blobs_per_block_mean", 5),
-        "cong_fee_final": _tail_mean(cong, "blob_fee_mean", 5),
-        "calib_fee_final": _tail_mean(calib, "blob_fee_mean", 5),
-    }
 
 
-def fig_phase_diagram() -> dict:
+def fig_phase_diagram() -> None:
     df = pd.read_csv(SWEEP_CSV)
     agg = df.groupby("lambda_scale").agg(
         mean=("blobs_per_block_mean", "mean"),
         std=("blobs_per_block_mean", "std"),
     ).reset_index()
-
     fig, ax = plt.subplots(figsize=(COL_W, 2.7), constrained_layout=True)
     ax.errorbar(agg["lambda_scale"], agg["mean"], yerr=agg["std"],
                 marker="o", color="C0", capsize=3, linewidth=1.3)
@@ -110,65 +127,68 @@ def fig_phase_diagram() -> dict:
     ax.grid(alpha=0.3, which="both")
     fig.savefig(OUT / "fig_phase_diagram.pdf")
     plt.close(fig)
-    return {row["lambda_scale"]: (row["mean"], row["std"]) for _, row in agg.iterrows()}
 
 
-def fig_calldata() -> dict:
-    df = pd.read_csv(CALLDATA_RUN / "history.csv")
-    tail = df.tail(10)
-    blob = np.array([tail[f"blob_post_freq_{a}"].mean() for a in N5])
-    cd = np.array([tail[f"calldata_freq_{a}"].mean() for a in N5])
-    wait = 1.0 - blob - cd
+def fig_calldata() -> None:
+    dirs = seed_dirs("calldata")
+    blob = np.array([[pd.read_csv(d / "history.csv")[f"blob_post_freq_{a}"]
+                      .tail(max(1, len(pd.read_csv(d / "history.csv")) // TAIL_FRAC)).mean()
+                      for d in dirs] for a in N5])
+    cd = np.array([[pd.read_csv(d / "history.csv")[f"calldata_freq_{a}"]
+                    .tail(max(1, len(pd.read_csv(d / "history.csv")) // TAIL_FRAC)).mean()
+                    for d in dirs] for a in N5])
+    blob_m, cd_m = blob.mean(1), cd.mean(1)
+    cd_s = cd.std(1)
+    wait_m = 1.0 - blob_m - cd_m
 
     fig, ax = plt.subplots(figsize=(COL_W, 2.8), constrained_layout=True)
     idx = np.arange(len(N5))
-    ax.bar(idx, blob, label="Blob", color="C0", alpha=0.85)
-    ax.bar(idx, cd, bottom=blob, label="Calldata", color="C1", alpha=0.85)
-    ax.bar(idx, wait, bottom=blob + cd, label="Wait", color="lightgray", alpha=0.85)
+    ax.bar(idx, blob_m, label="Blob", color="C0", alpha=0.85)
+    ax.bar(idx, cd_m, bottom=blob_m, yerr=cd_s, capsize=2, ecolor="0.3",
+           label="Calldata", color="C1", alpha=0.85)
+    ax.bar(idx, wait_m, bottom=blob_m + cd_m, label="Wait",
+           color="lightgray", alpha=0.85)
     ax.set_xticks(idx)
     ax.set_xticklabels([f"{a.replace('_','-')}\n$\\lambda{{=}}{LAMBDA[a]:.2f}$"
-                        for a in N5], fontsize=6.5)
+                        for a in N5], fontsize=7)
     ax.set_ylabel("Action frequency")
     ax.set_ylim(0, 1.05)
-    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=6.5)
+    ax.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0), fontsize=7)
     ax.grid(alpha=0.3, axis="y")
     fig.savefig(OUT / "fig_calldata.pdf")
     plt.close(fig)
-    return {a: (float(b), float(c)) for a, b, c in zip(N5, blob, cd)}
 
 
-def verify_postfreq() -> dict:
-    cong = pd.read_csv(CONG_RUN / "history.csv")
-    tail = cong.tail(5)
-    return {a: _tail_mean(tail, f"post_freq_{a}", 5) for a in N5}
-
-
-def verify_n18() -> dict:
-    df = pd.read_csv(N18_RUN / "history.csv")
-    return {"bpb_final": _tail_mean(df, "blobs_per_block_mean", 5)}
+def _perroll(config: str, col_tmpl) -> dict:
+    out = {}
+    for a in N5:
+        vals = []
+        for d in seed_dirs(config):
+            df = pd.read_csv(d / "history.csv")
+            vals.append(df[col_tmpl(a)].tail(max(1, len(df) // TAIL_FRAC)).mean())
+        out[a] = (float(np.mean(vals)), float(np.std(vals)))
+    return out
 
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    conv = fig_convergence()
-    pd_stats = fig_phase_diagram()
-    cd_stats = fig_calldata()
-    pf = verify_postfreq()
-    n18 = verify_n18()
+    fig_convergence()
+    fig_phase_diagram()
+    fig_calldata()
 
-    print("\n===== VERIFICATION (headline numbers, recomputed from CSVs) =====")
-    print(f"N=5 calibrated  final blobs/block : {conv['calib_bpb_final']:.3f}")
-    print(f"N=5 congested   final blobs/block : {conv['cong_bpb_final']:.3f}")
-    print(f"N=5 congested   final blob fee    : {conv['cong_fee_final']:.3e} wei")
-    print(f"N=18 (x300)     final blobs/block : {n18['bpb_final']:.3f}")
-    print("N=5 congested per-rollup posting freq (last 5 rollouts):")
-    for a in N5:
-        print(f"    {a:14s} lambda={LAMBDA[a]:.3f}  post_freq={pf[a]:.3f}")
-    print("Phase diagram (lambda_scale -> mean blobs/block +/- sd over 2 seeds):")
-    for ls, (m, s) in pd_stats.items():
-        print(f"    x{ls:<6.0f} {m:.3f} +/- {s:.3f}")
-    print("Calldata regime per-rollup (blob_freq, calldata_freq):")
-    for a, (b, c) in cd_stats.items():
-        print(f"    {a:14s} blob={b:.3f} calldata={c:.3f}")
-    print("=================================================================\n")
-    print("Wrote:", *(p.name for p in sorted(OUT.glob("*.pdf"))))
+    print("\n===== VERIFICATION (mean +/- s.d. across 5 seeds, final-20% window) =====")
+    for cfg in ["n5_congested", "n18", "calldata"]:
+        m, s = _tail_band(cfg, "blobs_per_block_mean")
+        gm = np.exp(np.log(_man[_man.config == cfg]["blob_fee_mean"]).mean())
+        print(f"{cfg:14s} aggregate blobs/block = {m:.3f} +/- {s:.3f} | fee gmean = {gm:.2e} wei")
+    print("\nN=5 congested per-rollup posting freq:")
+    for a, (m, s) in _perroll("n5_congested", lambda a: f"post_freq_{a}").items():
+        print(f"    {a:14s} lambda={LAMBDA[a]:.3f}  {m:.3f} +/- {s:.3f}")
+    print("\nCalldata per-rollup calldata freq (NOTE: high variance, no clean size order):")
+    for a, (m, s) in _perroll("calldata", lambda a: f"calldata_freq_{a}").items():
+        print(f"    {a:14s} lambda={LAMBDA[a]:.3f}  {m:.3f} +/- {s:.3f}")
+    df = pd.read_csv(SWEEP_CSV)
+    print("\nPhase diagram (5-seed sweep):")
+    for ls, g in df.groupby("lambda_scale"):
+        print(f"    x{ls:<6.0f} {g['blobs_per_block_mean'].mean():.3f} +/- {g['blobs_per_block_mean'].std():.3f}")
+    print("\nWrote:", *(p.name for p in sorted(OUT.glob("*.pdf"))))
