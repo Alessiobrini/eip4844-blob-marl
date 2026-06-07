@@ -25,6 +25,9 @@ REPO = Path(__file__).resolve().parents[1]
 SEEDS = [42, 123, 7, 99, 2024]
 
 CONFIGS = {
+    "n5_calibrated": {"phase": "configs/phase2.yaml",
+                      "over": {"rollups.lambda_scale": 1.0,
+                               "rl.total_timesteps": 100000}},
     "n5_congested": {"phase": "configs/phase2.yaml",
                      "over": {"rollups.lambda_scale": 100.0,
                               "env.reward_scale": 1.0e-2,
@@ -61,15 +64,23 @@ def run_one(phase_path: str, over: dict, seed: int) -> dict:
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", nargs="+", default=None,
+                    help="run only these config names")
+    args = ap.parse_args()
+    configs = {k: v for k, v in CONFIGS.items()
+               if args.only is None or k in args.only}
+
     out_dir = REPO / "results" / "multiseed"
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d_%H%M%S")
     out_path = out_dir / f"manifest_{stamp}.csv"
 
     rows = []
-    total = len(CONFIGS) * len(SEEDS)
+    total = len(configs) * len(SEEDS)
     done = 0
-    for name, spec in CONFIGS.items():
+    for name, spec in configs.items():
         for seed in SEEDS:
             done += 1
             print(f"\n==== {done}/{total}: config={name} seed={seed} ====",

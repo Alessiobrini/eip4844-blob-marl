@@ -21,9 +21,7 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-CALIB_RUN = ROOT / "results/phase2_20260424_115247_27b811d2"           # N=5, lambda x1
 SWEEP_CSV = ROOT / "results/sweeps/phase_diagram_20260606_150026.csv"  # 5-seed sweep
-MANIFEST = ROOT / "results/multiseed/manifest_20260606_151700.csv"     # 5-seed headline runs
 OUT = ROOT / "paper/figures"
 
 LAMBDA = {
@@ -44,7 +42,11 @@ plt.rcParams.update({
     "ytick.labelsize": 7, "lines.linewidth": 1.2, "figure.dpi": 200,
 })
 
-_man = pd.read_csv(MANIFEST)
+_man = pd.concat(
+    [pd.read_csv(p) for p in
+     sorted((ROOT / "results/multiseed").glob("manifest_*.csv"))],
+    ignore_index=True,
+)
 
 
 def seed_dirs(config: str) -> list[Path]:
@@ -68,20 +70,29 @@ def _tail_band(config: str, col: str) -> tuple[float, float]:
 
 
 def fig_convergence() -> None:
-    calib = pd.read_csv(CALIB_RUN / "history.csv")
     cong_dirs = seed_dirs("n5_congested")
+    calib_dirs = seed_dirs("n5_calibrated")
     steps = pd.read_csv(cong_dirs[0] / "history.csv")["global_step"].to_numpy()
     n = len(steps)
-    blobs = _stack(cong_dirs, "blobs_per_block_mean")[:, :n]
-    logfee = np.log(_stack(cong_dirs, "blob_fee_mean")[:, :n])
+    cong_b = _stack(cong_dirs, "blobs_per_block_mean")[:, :n]
+    cong_lf = np.log(_stack(cong_dirs, "blob_fee_mean")[:, :n])
+    cal_b = _stack(calib_dirs, "blobs_per_block_mean")[:, :n]
+    cal_lf = np.log(_stack(calib_dirs, "blob_fee_mean")[:, :n])
+
+    def band(ax, data, color, label, log=False):
+        m, s = data.mean(0), data.std(0)
+        if log:
+            gm = np.exp(m)
+            ax.semilogy(steps, gm, color=color, label=label)
+            ax.fill_between(steps, np.exp(m - s), np.exp(m + s), color=color, alpha=0.25)
+        else:
+            ax.plot(steps, m, color=color, label=label)
+            ax.fill_between(steps, m - s, m + s, color=color, alpha=0.25)
 
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.5), constrained_layout=True)
     ax = axes[0]
-    ax.plot(calib["global_step"], calib["blobs_per_block_mean"],
-            label=r"Calibrated ($\lambda{\times}1$)", color="C0")
-    m, s = blobs.mean(0), blobs.std(0)
-    ax.plot(steps, m, color="C3", label=r"Congested ($\lambda{\times}100$)")
-    ax.fill_between(steps, m - s, m + s, color="C3", alpha=0.25)
+    band(ax, cal_b, "C0", r"Calibrated ($\lambda{\times}1$)")
+    band(ax, cong_b, "C3", r"Congested ($\lambda{\times}100$)")
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
                label=r"Target $b^*=3$")
     ax.set_xlabel("Training step")
@@ -91,13 +102,8 @@ def fig_convergence() -> None:
     ax.grid(alpha=0.3)
 
     ax = axes[1]
-    ax.semilogy(calib["global_step"], calib["blob_fee_mean"],
-                label=r"Calibrated ($\lambda{\times}1$)", color="C0")
-    gm = np.exp(logfee.mean(0))
-    lo = np.exp(logfee.mean(0) - logfee.std(0))
-    hi = np.exp(logfee.mean(0) + logfee.std(0))
-    ax.semilogy(steps, gm, color="C3", label=r"Congested ($\lambda{\times}100$)")
-    ax.fill_between(steps, lo, hi, color="C3", alpha=0.25)
+    band(ax, cal_lf, "C0", r"Calibrated ($\lambda{\times}1$)", log=True)
+    band(ax, cong_lf, "C3", r"Congested ($\lambda{\times}100$)", log=True)
     ax.set_xlabel("Training step")
     ax.set_ylabel("Blob base fee (wei)")
     ax.set_title("(b) Endogenous blob base fee")
