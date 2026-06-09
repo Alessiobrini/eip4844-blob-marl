@@ -217,5 +217,9 @@ mlflow.db
 # Paper lives in its own repo (the paper repository), wired to Overleaf
 paper/
 
+# Claude Code / assistant files (not part of the public code repo)
+CLAUDE.md
+.claude/
+
 # macOS
 .DS_Store
