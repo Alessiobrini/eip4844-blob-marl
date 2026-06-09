@@ -117,10 +117,12 @@ def fig_convergence() -> None:
 
 
 def fig_n18() -> None:
+    # Single-column, single-panel: per-rollup posting frequency across the full
+    # 18-rollup roster. Panel (a) (aggregate supply for N=18) was dropped to fit
+    # the 5-page limit; the headline 3.66 +/- 0.01 is stated in the prose and
+    # verified in the __main__ block below.
     dirs = seed_dirs("n18")
-    steps = pd.read_csv(dirs[0] / "history.csv")["global_step"].to_numpy()
-    n = len(steps)
-    blobs = _stack(dirs, "blobs_per_block_mean")[:, :n]
+    n = len(pd.read_csv(dirs[0] / "history.csv")["global_step"])
     roster = [r for r in LAMBDA if f"post_freq_{r}" in
               pd.read_csv(dirs[0] / "history.csv").columns]
     roster = sorted(roster, key=lambda r: -LAMBDA[r])
@@ -129,20 +131,7 @@ def fig_n18() -> None:
                    for r in roster])
     pf_m, pf_s = pf.mean(1), pf.std(1)
 
-    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.6), constrained_layout=True)
-    ax = axes[0]
-    m, s = blobs.mean(0), blobs.std(0)
-    ax.plot(steps, m, color="C3", label=r"Aggregate supply (mean $\pm$ s.d.)")
-    ax.fill_between(steps, m - s, m + s, color="C3", alpha=0.25)
-    ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
-               label=r"Target $b^*=3$")
-    ax.set_xlabel("Training step")
-    ax.set_ylabel("Blobs per block")
-    ax.set_title(r"(a) Aggregate supply, $N{=}18$, $\lambda{\times}300$")
-    ax.legend()
-    ax.grid(alpha=0.3)
-
-    ax = axes[1]
+    fig, ax = plt.subplots(figsize=(COL_W, 2.5), constrained_layout=True)
     x = np.arange(len(roster))
     ax.bar(x, pf_m, yerr=pf_s, capsize=2, ecolor="0.3", color="steelblue", alpha=0.85)
     ax.set_xticks(x)
@@ -150,7 +139,7 @@ def fig_n18() -> None:
                        ha="right", fontsize=6)
     ax.set_ylabel("Posting freq.")
     ax.set_ylim(0, 1.05)
-    ax.set_title(r"(b) Per-rollup posting frequency (ordered by $\lambda_i$)")
+    ax.set_title(r"Per-rollup posting freq., $N{=}18$, $\lambda{\times}300$ (by $\lambda_i$)")
     ax.grid(alpha=0.3, axis="y")
     fig.savefig(OUT / "fig_n18.pdf")
     plt.close(fig)
