@@ -91,7 +91,7 @@ def fig_convergence() -> None:
 
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.5), constrained_layout=True)
     ax = axes[0]
-    band(ax, cal_b, "C0", r"Calibrated ($\lambda{\times}1$)")
+    band(ax, cal_b, "C0", r"Calibrated (empirical $\lambda$)")
     band(ax, cong_b, "C3", r"Congested ($\lambda{\times}100$)")
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
                label=r"Target $b^*=3$")
@@ -102,7 +102,7 @@ def fig_convergence() -> None:
     ax.grid(alpha=0.3)
 
     ax = axes[1]
-    band(ax, cal_lf, "C0", r"Calibrated ($\lambda{\times}1$)", log=True)
+    band(ax, cal_lf, "C0", r"Calibrated (empirical $\lambda$)", log=True)
     band(ax, cong_lf, "C3", r"Congested ($\lambda{\times}100$)", log=True)
     ax.set_xlabel("Training step")
     ax.set_ylabel("Blob base fee (wei)")
@@ -129,7 +129,7 @@ def fig_n18() -> None:
     fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.6), constrained_layout=True)
     ax = axes[0]
     m, s = blobs.mean(0), blobs.std(0)
-    ax.plot(steps, m, color="C3")
+    ax.plot(steps, m, color="C3", label=r"Aggregate supply (mean $\pm$ s.d.)")
     ax.fill_between(steps, m - s, m + s, color="C3", alpha=0.25)
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
                label=r"Target $b^*=3$")
