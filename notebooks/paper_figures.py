@@ -37,9 +37,12 @@ TAIL_FRAC = 5  # final 1/TAIL_FRAC of rollouts = final 20% window
 
 COL_W, FULL_W = 3.45, 7.0
 plt.rcParams.update({
-    "font.size": 8, "font.family": "serif", "axes.titlesize": 8,
-    "axes.labelsize": 8, "legend.fontsize": 7, "xtick.labelsize": 7,
-    "ytick.labelsize": 7, "lines.linewidth": 1.2, "figure.dpi": 200,
+    "font.size": 8, "font.family": "serif",
+    "font.serif": ["Computer Modern Roman"],
+    "text.usetex": True,                       # match IEEEtran Computer Modern
+    "axes.titlesize": 8, "axes.labelsize": 8, "legend.fontsize": 7,
+    "xtick.labelsize": 7, "ytick.labelsize": 7,
+    "lines.linewidth": 1.2, "figure.dpi": 300,
 })
 
 _man = pd.concat(
