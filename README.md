@@ -1,245 +1,185 @@
 # blob-abm-rl
 
-Agent-based model and multi-agent reinforcement learning framework for the
-EIP-4844 Ethereum blob fee market. This project bridges the gap between
-closed-form equilibrium theory and empirically observed anomalies in
-post-Dencun rollup behavior.
+Agent-based model and multi-agent reinforcement learning (RL) framework for
+the EIP-4844 Ethereum blob fee market. The environment couples independent
+learning rollups through an endogenous blob base fee and is calibrated to
+post-Dencun on-chain data.
 
-## Research Motivation
+## Paper
 
-EIP-4844 (Proto-Danksharding, March 2024) introduced a dedicated data lane
-for L2 rollups with a target of 3 blobs per block and a multiplicative fee
-update rule. The theoretical literature derives threshold-based optimal
-posting strategies under simplifying assumptions, but empirical data reveals
-persistent deviations:
+This repository is the companion code for the paper
 
-- **29.48%** of blob-containing blocks are built suboptimally by builders
-  (Huang et al., 2411.03892)
-- Scroll and Starknet consistently use **one blob per transaction** (a
-  dominated strategy) instead of batching
-- Blob sharing could reduce costs by **85%+** for small rollups, but hasn't
-  emerged spontaneously (Lee, 2410.04111)
+> Alessio Brini, "Do Rollups Self-Organize? Multi-Agent Reinforcement
+> Learning in the EIP-4844 Blob Fee Market," accepted at the IEEE 4th
+> International Conference on Artificial Intelligence, Blockchain, and
+> Internet of Things (AIBThings 2026), Mount Pleasant, MI, USA.
 
-This project uses RL to explore where and why analytical solutions break
-down, producing novel insights for fee market design.
+It holds the environment, the calibrated parameters, the training and
+evaluation scripts, and the BigQuery queries that regenerate the raw
+on-chain data behind every number in the paper. See
+[Reproducing the paper](#reproducing-the-paper) for the exhibit-by-exhibit
+map.
 
-## Architecture
+```bibtex
+@inproceedings{brini2026rollups,
+  title     = {Do Rollups Self-Organize? Multi-Agent Reinforcement Learning
+               in the {EIP-4844} Blob Fee Market},
+  author    = {Brini, Alessio},
+  booktitle = {IEEE 4th International Conference on Artificial Intelligence,
+               Blockchain, and Internet of Things (AIBThings)},
+  year      = {2026}
+}
+```
 
-The environment is a **single codebase** that supports multiple experimental
-configurations through YAML config flags. No separate implementations are
-needed for different stages.
+## Research question
 
-### Two-Stage Design (Phase 1)
+EIP-4844 (Dencun, March 2024) gave rollups a dedicated data lane priced by a
+multiplicative update rule targeting 3 blobs per block. The rule is a
+negative-feedback controller, but whether the target is reached depends on
+how independent, self-interested rollups respond to the price they jointly
+create. Existing theory covers a single rollup under exogenous prices. This
+project asks whether the protocol's intended operating point emerges when
+heterogeneous rollups learn how to post against an endogenous fee.
 
-| Axis | Stage A (Bar-On & Mansour) | Stage B (Shouqiao et al.) | Config Key |
-|------|---------------------------|--------------------------|------------|
-| Price process | Log-normal multiplicative RW | AR(1) mean-reverting | `price_process.type` |
-| Queue mode | Fixed batch, deterministic wait | Poisson arrivals | `env.queue_mode` |
-| Action space | Binary {wait, post} | Discrete {0..6} blobs | `env.action_mode` |
-| Cost function | `alpha * wait_time + P * gas_fixed` | `alpha * Q + blob_cost + gas_cost` | `env.cost_mode` |
-| Reward timing | Cost only on post step | Delay cost every step | `env.reward_mode` |
-
-**Stage A** exactly replicates Bar-On & Mansour (2312.06448) so a DQN agent
-can be benchmarked against their closed-form threshold policy
-`lambda(x) = 2*alpha*x / (1 - gamma)`.
-
-**Stage B** systematically relaxes assumptions one at a time to show where
-RL adds value beyond analytical methods.
-
-### Core Modules
+## Repository layout
 
 ```
 src/
 ├── abm/
-│   ├── env.py              # BlobMarketEnv — Gymnasium wrapper (central integration point)
-│   ├── fee_market.py        # EIP-4844 blob base fee update rule (canonical, do not modify)
+│   ├── env.py               # BlobMarketEnv, single-agent Gymnasium env (validation)
+│   ├── multi_env.py         # MultiAgentBlobEnv, N rollups + endogenous EIP-4844 fee
+│   ├── fee_market.py        # EIP-4844 blob base fee update rule (canonical)
 │   ├── gas_process.py       # Price processes: LogNormalRandomWalk, AR1Process
-│   ├── run_sim.py           # Standalone ABM runner (no RL, analytical policies)
+│   ├── run_sim.py           # Standalone ABM runner (rule-based policies, no RL)
 │   └── agents/
-│       ├── rollup.py        # RollupAgent — Mesa agent with dual queue modes
-│       └── builder.py       # BuilderAgent — pass-through in Phase 1
+│       ├── rollup.py        # RollupAgent, queue dynamics (Poisson / fixed batch)
+│       └── builder.py       # BuilderAgent, pass-through inclusion
 ├── rl/
-│   ├── train.py             # SB3 DQN training with MLflow logging
-│   ├── evaluate.py          # Policy evaluation + threshold surface extraction
-│   └── policies/
-│       └── threshold.py     # Bar-On & Mansour analytical threshold baseline
+│   ├── train.py             # Single-agent DQN training (validation experiments)
+│   ├── marl_train.py        # Independent PPO trainer, one policy per rollup
+│   ├── evaluate.py          # Policy evaluation and threshold surface extraction
+│   └── policies/            # Analytical threshold baseline, actor-critic net
 ├── data/
-│   ├── calibration.py       # AR(1) fitting from Ethereum data (planned)
-│   └── loaders.py           # Data loading from CSV/Dune exports (planned)
+│   ├── fetch.py             # BigQuery queries: blocks + type-3 txs -> data/raw/
+│   ├── calibration.py       # AR(1) fits + lambda_i estimation -> configs/calibration.yaml
+│   ├── loaders.py           # Load raw CSV exports
+│   └── rollup_labels.py     # Batcher-address -> rollup labeling
 └── experiments/
-    └── phase1_single_agent.py  # CLI entry point for Phase 1 experiments
+    ├── phase1_single_agent.py   # CLI: single-agent DQN runs
+    └── phase2_marl.py           # CLI: multi-agent PPO runs
+
+configs/       # base.yaml + calibration.yaml (generated) + experiment configs
+scripts/       # Paper experiments: multiseed runs, sweeps, baselines, ablations
+notebooks/     # Figure and table regenerators (paper source of truth)
+tests/         # 93 pytest tests: fee rule, queues, envs, price processes
 ```
-
-### Environment Details
-
-**BlobMarketEnv** (`src/abm/env.py`) is a Gymnasium-compatible environment:
-
-- **Observation** `(3,)`: `[queue_or_waiting_time, blob_base_fee, gas_price]`
-  (optionally log-transformed)
-- **Action**: `Discrete(2)` in binary mode, `Discrete(7)` in discrete mode
-- **Reward**: Negative cost = `-(delay_cost + posting_cost)`
-- **Termination**: Fixed-horizon truncation (configurable, default 10,000 steps)
-- **One step = one L1 block** (~12 seconds)
 
 ## Setup
 
-### Prerequisites
-
-- Python 3.11+
-- Conda (recommended) or pip
-
-### Installation
+Python 3.11 with conda:
 
 ```bash
-# Create and activate the conda environment
 conda create -n blob-abm python=3.11
 conda activate blob-abm
-
-# Install dependencies
-pip install mesa>=3.0 gymnasium stable-baselines3 numpy pandas \
+pip install mesa>=3.0 gymnasium stable-baselines3 torch numpy pandas \
     omegaconf mlflow matplotlib seaborn scipy pytest
 ```
 
-### Verify Installation
+Verify the installation (all 93 tests should pass):
 
 ```bash
 pytest tests/ -v
 ```
 
-All 59 tests should pass, covering price processes, fee market rules, agent
-queue dynamics, and the Gymnasium environment lifecycle.
+## Data pipeline
 
-## Usage
-
-### Run the ABM standalone (no RL)
-
-Uses the analytical threshold policy from Bar-On & Mansour to validate
-environment dynamics:
+Raw data come from Google BigQuery's public `crypto_ethereum` dataset over
+the post-Dencun window (March 13 to August 31, 2024, 1,218,246 blocks).
+`data/` is gitignored; regenerate it with your own Google Cloud credentials
+(free tier suffices):
 
 ```bash
-# Stage A: fixed batch, binary action, log-normal prices
-python src/abm/run_sim.py --config configs/phase1_stage_a.yaml --steps 1000
+# Download blocks and type-3 (blob) transactions to data/raw/
+python src/data/fetch.py
 
-# Stage B: Poisson arrivals, discrete blobs, AR(1) prices
-python src/abm/run_sim.py --config configs/phase1_stage_b.yaml --steps 5000
-
-# Save output to CSV
-python src/abm/run_sim.py --config configs/phase1_stage_a.yaml --steps 10000 \
-    --output results/abm_stage_a.csv
+# Fit AR(1) price processes and per-rollup arrival rates
+python src/data/calibration.py --output configs/calibration.yaml
 ```
 
-### Train a DQN agent
+The committed `configs/calibration.yaml` already contains the calibrated
+parameters used in the paper, so training runs work without downloading
+anything.
+
+## Running experiments
 
 ```bash
-# Stage A: replicate Bar-On & Mansour threshold
+# Single-agent validation runs (DQN vs the analytical threshold policy)
 python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml
 
-# Stage B: Shouqiao relaxation
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_b.yaml
+# Multi-agent headline run (N=5 rollups, independent PPO, endogenous fee)
+python src/experiments/phase2_marl.py --config configs/phase2.yaml \
+    rollups.lambda_scale=100 env.reward_scale=0.01 rl.total_timesteps=100000
 
-# Override parameters from CLI
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    rollup.alpha_i=2.0 rl.total_timesteps=1000000
-
-# Short smoke test
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    rl.total_timesteps=10000 env.max_steps=500
+# 18-rollup roster
+python src/experiments/phase2_marl.py --config configs/phase2_n18.yaml
 ```
 
-Training outputs are saved to `results/{timestamp}_{config_hash}/` and include:
-- `config.yaml` — full resolved configuration
-- `policy_checkpoint/dqn_model.zip` — saved model weights
-- MLflow metrics (episode rewards, evaluation vs analytical baseline)
+Every run writes `results/{timestamp}_{config_hash}/` with the resolved
+config, per-update metrics (`history.csv`), and policy checkpoints, and logs
+to MLflow. All randomness is seeded through the configs.
 
-### Stage B Assumption Relaxations
+## Reproducing the paper
 
-Each relaxation is a config change. Run them one at a time to isolate effects:
+Each exhibit in the paper maps to a committed script. The multi-seed runs
+use seeds {42, 123, 7, 99, 2024} and report the final-20% steady-state
+window.
 
-```bash
-# B1: stochastic arrivals (fixed_batch -> poisson_arrival)
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    env.queue_mode=poisson_arrival rollup.lambda_i=180
+| Paper exhibit | Script |
+|---|---|
+| Tab. I, AR(1) calibration | `src/data/calibration.py` |
+| Tab. II, single-agent validation | `notebooks/validation_table.py` |
+| Fig. 1 and Tab. III, headline N=5 runs | `scripts/multiseed_headline.py` |
+| Fig. 2, phase diagram (10x to 500x) | `scripts/sweep_phase_diagram.py` |
+| Fig. 3, 18-rollup generality | `scripts/multiseed_headline.py` (n18 config) |
+| Fig. 4, calldata outside option | `scripts/multiseed_headline.py` (calldata config) |
+| Non-learning baselines (Sec. V) | `scripts/rule_based_baselines.py` |
+| Fixed delay-coefficient ablation (Sec. V) | `scripts/fixed_alpha_ablation.py` |
+| Cap-binding footnote (Sec. III) | `scripts/measure_cap_binding.py` |
+| Target sweep b* in {2,3,4} (Sec. VI) | `scripts/blobtarget_sweep.py` |
+| All figure PDFs | `notebooks/paper_figures.py` |
 
-# B2: fixed overhead cost
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    env.cost_mode=linear_overhead
-
-# B3: blob discretization
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    env.action_mode=discrete_blobs
-
-# B4: non-stationary (mean-reverting) prices
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    price_process.type=ar1
-
-# B5: quadratic delay cost
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
-    env.cost_mode=quadratic_delay
-```
-
-### View experiment results
-
-MLflow logs all metrics. To browse:
-
-```bash
-mlflow ui
-# Then open http://localhost:5000
-```
-
-### Run tests
-
-```bash
-# All tests
-pytest tests/ -v
-
-# Specific test file
-pytest tests/test_env.py -v
-
-# With coverage
-pytest tests/ --cov=src --cov-report=term-missing
-```
+`notebooks/paper_figures.py` and `notebooks/validation_table.py` are the
+source of truth for the shipped figures and validation numbers. They read
+the local `results/` tree produced by the scripts above and recompute every
+headline statistic.
 
 ## Configuration
 
-All parameters are in YAML configs under `configs/`. The base config
-(`configs/base.yaml`) defines all defaults. Stage-specific configs override
-only what changes.
+All parameters live in YAML under `configs/`, never hardcoded.
+`configs/base.yaml` holds defaults, experiment configs override, and
+`configs/calibration.yaml` is generated by the calibration pipeline. Key
+switches: `env.queue_mode` (Poisson arrivals or fixed batch),
+`env.action_mode` (binary, 0 to 6 blobs, or with calldata),
+`env.cost_mode`, `price_process.type` (log-normal random walk or AR(1)),
+`rollups.lambda_scale` (the demand multiplier), and
+`rollups.alpha_fixed_lambda` (the fixed delay-coefficient ablation).
 
-Key parameters:
+## Status
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `env.queue_mode` | `"fixed_batch"` or `"poisson_arrival"` | `"poisson_arrival"` |
-| `env.action_mode` | `"binary"` or `"discrete_blobs"` | `"discrete_blobs"` |
-| `env.cost_mode` | `"bar_on_mansour"`, `"linear_overhead"`, or `"quadratic_delay"` | `"linear_overhead"` |
-| `env.reward_mode` | `"per_step"` or `"on_post_only"` | `"per_step"` |
-| `env.max_steps` | Episode length (blocks) | `10000` |
-| `env.gas_fixed` | Type-3 tx intrinsic gas cost | `21000` |
-| `rollup.lambda_i` | Transaction arrival rate (tx/block) | `180.0` |
-| `rollup.alpha_i` | Delay cost coefficient | `1.0` |
-| `rollup.d_i` | Data bytes per transaction | `500` |
-| `rollup.gamma` | Discount factor | `0.99` |
-| `price_process.type` | `"log_normal_rw"` or `"ar1"` | `"ar1"` |
-| `rl.total_timesteps` | Training duration | `500000` |
+The project is concluded through the paper's scope: single-agent validation
+against the analytical threshold policy and multi-agent experiments with an
+endogenous fee (headline convergence, phase diagram, 18-rollup roster,
+calldata outside option, baselines, and ablations). A learning builder and
+cooperative blob sharing, Phases 3 and 4 of the original design in
+`SPEC.md`, remain future work.
 
-## Project Phases
+## Key references
 
-The full project proceeds in four phases (see `SPEC.md` for details):
-
-| Phase | Focus | Status |
-|-------|-------|--------|
-| **Phase 1** | Single-agent RL vs analytical threshold | **In progress** |
-| Phase 2 | Multi-rollup MARL with endogenous blob fee | Planned |
-| Phase 3 | Strategic builder agent | Planned |
-| Phase 4 | Blob sharing as cooperative MARL | Planned |
-
-## Key References
-
-- Bar-On & Mansour (2023). Optimal Publishing Strategies on a Base Layer. arXiv:2312.06448.
-- Shouqiao et al. (2025). A Framework for Combined Transaction Posting and Pricing for L2 Blockchains. arXiv:2505.19556.
-- Crapis, Felten & Mamageishvili (2023). EIP-4844 Economics and Rollup Strategies. arXiv:2310.01155.
+- Bar-On and Mansour (2024). Optimal Publishing Strategies on a Base Layer. FC 2024.
+- Wang, Crapis, and Moallemi (2025). A Framework for Combined Transaction Posting and Pricing for Layer 2 Blockchains. FC 2025.
+- Crapis, Felten, and Mamageishvili (2024). EIP-4844 Economics and Rollup Strategies. FC 2024 Workshops.
 - Huang et al. (2024). A First Look at Ethereum Blob Revolution. arXiv:2411.03892.
-- Lee (2024). 180 Days After EIP-4844. arXiv:2410.04111.
+- Lee (2025). 180 Days After EIP-4844. IEEE ICDCSW 2025.
 
 ## License
 
