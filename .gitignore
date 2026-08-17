@@ -226,3 +226,6 @@ CLAUDE.md
 
 # Internal assistant-generated reports (never public)
 reports/
+
+# Downloaded third-party paper PDFs and internal lit review (kept local)
+literature/
