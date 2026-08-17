@@ -223,3 +223,6 @@ CLAUDE.md
 
 # macOS
 .DS_Store
+
+# Internal assistant-generated reports (never public)
+reports/

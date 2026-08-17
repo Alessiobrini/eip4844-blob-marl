@@ -62,7 +62,11 @@ def _build_rollup_spec(cfg: DictConfig) -> list[tuple[RollupId, float, float]]:
         lam = lambda_scale * float(rates[label])
         # alpha_i uses the unscaled (empirical) lambda so that delay-cost
         # magnitudes stay calibrated while arrival intensity changes.
-        alpha = alpha_scale * 2.0 * c_ref * float(rates[label])
+        # alpha_fixed_lambda replaces the per-rollup lambda with a common
+        # reference value (fixed delay-coefficient ablation).
+        alpha_lambda = cfg.rollups.get("alpha_fixed_lambda", None)
+        alpha_lambda = float(rates[label]) if alpha_lambda is None else float(alpha_lambda)
+        alpha = alpha_scale * 2.0 * c_ref * alpha_lambda
         spec.append((label, lam, alpha))
     return spec
 
