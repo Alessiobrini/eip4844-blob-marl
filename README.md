@@ -1,4 +1,4 @@
-# blob-abm-rl
+# Do Rollups Self-Organize? Multi-Agent Reinforcement Learning in the EIP-4844 Blob Fee Market
 
 Agent-based model and multi-agent reinforcement learning (RL) framework for
 the EIP-4844 Ethereum blob fee market. The environment couples independent
@@ -7,29 +7,17 @@ post-Dencun on-chain data.
 
 ## Paper
 
-This repository is the companion code for the paper
+This repository is the companion code for the paper of the same title by
+Alessio Brini (Duke University), accepted at the IEEE 4th International
+Conference on Artificial Intelligence, Blockchain, and Internet of Things
+(AIBThings 2026), Mount Pleasant, MI, USA. A citation entry will be added
+once the paper appears in IEEE Xplore.
 
-> Alessio Brini, "Do Rollups Self-Organize? Multi-Agent Reinforcement
-> Learning in the EIP-4844 Blob Fee Market," accepted at the IEEE 4th
-> International Conference on Artificial Intelligence, Blockchain, and
-> Internet of Things (AIBThings 2026), Mount Pleasant, MI, USA.
-
-It holds the environment, the calibrated parameters, the training and
-evaluation scripts, and the BigQuery queries that regenerate the raw
-on-chain data behind every number in the paper. See
+The repository holds the environment, the calibrated parameters, the
+training and evaluation scripts, and the BigQuery queries that regenerate
+the raw on-chain data behind every number in the paper. See
 [Reproducing the paper](#reproducing-the-paper) for the exhibit-by-exhibit
 map.
-
-```bibtex
-@inproceedings{brini2026rollups,
-  title     = {Do Rollups Self-Organize? Multi-Agent Reinforcement Learning
-               in the {EIP-4844} Blob Fee Market},
-  author    = {Brini, Alessio},
-  booktitle = {IEEE 4th International Conference on Artificial Intelligence,
-               Blockchain, and Internet of Things (AIBThings)},
-  year      = {2026}
-}
-```
 
 ## Research question
 
@@ -180,7 +168,3 @@ cooperative blob sharing, Phases 3 and 4 of the original design in
 - Crapis, Felten, and Mamageishvili (2024). EIP-4844 Economics and Rollup Strategies. FC 2024 Workshops.
 - Huang et al. (2024). A First Look at Ethereum Blob Revolution. arXiv:2411.03892.
 - Lee (2025). 180 Days After EIP-4844. IEEE ICDCSW 2025.
-
-## License
-
-See [LICENSE](LICENSE).
