@@ -167,7 +167,7 @@ def fig_phase_diagram() -> None:
         mean=("blobs_per_block_mean", "mean"),
         std=("blobs_per_block_mean", "std"),
     ).reset_index()
-    fig, ax = plt.subplots(figsize=(COL_W, 1.65), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(COL_W, 1.55), constrained_layout=True)
     ax.errorbar(agg["lambda_scale"], agg["mean"], yerr=agg["std"],
                 marker="o", color="C0", capsize=3, linewidth=1.3)
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
@@ -195,7 +195,7 @@ def fig_calldata() -> None:
     cd_s = cd.std(1)
     wait_m = 1.0 - blob_m - cd_m
 
-    fig, ax = plt.subplots(figsize=(COL_W, 1.65), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(COL_W, 1.55), constrained_layout=True)
     idx = np.arange(len(N5))
     ax.bar(idx, blob_m, label="Blob", color="C0", alpha=0.85)
     ax.bar(idx, cd_m, bottom=blob_m, yerr=cd_s, capsize=2, ecolor="0.3",
