@@ -1,9 +1,8 @@
 """Fixed delay-coefficient ablation.
 
-The calibration alpha_i = 2 * C_ref * lambda_i ties the delay penalty
-to rollup size, so the monotone posting-frequency ordering could be induced by
-the reward parameterization rather than learned from the arrival process. This
-script re-trains the headline N=5 congested configuration (phase2.yaml,
+The calibration alpha_i = 2 * C_ref * lambda_i ties the delay penalty to
+rollup size, so the reward parameterization alone could induce the monotone
+posting-frequency ordering. This script re-trains the headline N=5 congested configuration (phase2.yaml,
 lambda_scale=100) with a common delay coefficient for every rollup: alpha_i is
 computed from the roster-mean empirical arrival rate instead of each rollup's
 own (rollups.alpha_fixed_lambda). Arrival heterogeneity is untouched.

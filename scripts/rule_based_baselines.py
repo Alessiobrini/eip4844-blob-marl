@@ -1,8 +1,7 @@
 """Non-learning baselines for the N=5 congested regime.
 
-The baselines show how much of the target-tracking result comes from learning
-rather than from the negative feedback of the fee rule itself. This script
-runs rule-based policies through the same MultiAgentBlobEnv used for the
+The baselines separate the contribution of learning to target tracking from
+the negative feedback of the fee rule itself. This script runs rule-based policies through the same MultiAgentBlobEnv used for the
 headline PPO experiment (phase2.yaml, lambda_scale=100) and reports the
 steady-state aggregate blob supply, fee level, and per-rollup cost, so the
 paper can compare them with the PPO equilibrium.
@@ -76,7 +75,7 @@ def run_one(policy: str, seed: int, n_steps: int, lambda_scale: float) -> dict:
     """Simulate one baseline policy for n_steps blocks.
 
     Args:
-        policy: Baseline name (always_post, full_blob, myopic).
+        policy: Baseline name (every_block, full_blob, myopic).
         seed: Environment seed.
         n_steps: Number of blocks to simulate.
         lambda_scale: Demand multiplier (100 = headline congested regime).

@@ -1,13 +1,14 @@
-"""Regenerate the AIBThings paper figures at IEEE 2-column width and verify
-every headline number directly from the Phase 2 results CSVs.
+"""Regenerate the paper figures at IEEE 2-column width and verify every
+headline number directly from the Phase 2 results CSVs.
 
-This is the single source of truth for the figures that ship in the paper
-(the paper repository -> paper/figures/). Run end-to-end:
+This is the single source of truth for the figures in the paper. Run from the
+repository root:
 
     python notebooks/paper_figures.py
 
 It reads the local results/ tree (model outputs, gitignored) and writes
-PDFs into paper/figures/. Headline results are reported as mean +/- s.d.
+PDFs into paper/figures/ (created if missing). The figures use LaTeX for text,
+so a TeX installation is required. Headline results are reported as mean +/- s.d.
 across the 5-seed runs in results/multiseed/ (final-20% steady-state
 window); the phase diagram uses the 5-seed sweep in results/sweeps/.
 """

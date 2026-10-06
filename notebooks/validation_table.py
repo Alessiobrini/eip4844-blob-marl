@@ -1,9 +1,9 @@
 """Regenerate the single-agent validation table (Tab. II, `tab:validation`)
-directly from the committed Phase-1 run checkpoints and the analytical policy.
+directly from locally saved Phase-1 run checkpoints and the analytical policy.
 
-This is the source of truth for the validation numbers that ship in the paper
-(the paper repository -> paper/main.tex, tab:validation), the
-analog of `paper_figures.py` for the single-agent sanity check. Run end-to-end:
+This is the source of truth for the validation numbers in the paper, the
+analog of `paper_figures.py` for the single-agent sanity check. Run from the
+repository root:
 
     python notebooks/validation_table.py
 
@@ -14,7 +14,7 @@ protocol used at train time (`evaluate_policy`, n_episodes=20, seed=1000), so
 the printed numbers reproduce the table cell-for-cell:
 
   Regime              DQN post freq   Reference
-  Martingale price    0.46            0.48 (BarOnMansourThreshold optimum)
+  Random-walk price   0.46            0.48 (BarOnMansourThreshold policy)
   Calibrated floor    1.00            1.00 (always-post)
   Extreme congestion  0.64            8.8x cheaper than always-post
 

@@ -6,7 +6,7 @@
 # drawn from the calibration window.
 #
 # Rollups are drawn from configs/calibration.yaml:rollup_rates.
-# For the MVP smoke run we use the top-5 rollups by arrival rate.
+# The N=5 experiments use the top-5 rollups by arrival rate.
 #
 # alpha_i is calibrated via revealed preference: alpha_i = 2 * C_ref * lambda_i
 # (same rule as Phase 1 Stage B). We scale costs by cost_normalization so
@@ -52,7 +52,7 @@ rollups:
 
 rl:
   algorithm: "IndependentPPO"
-  total_timesteps: 20000           # MVP smoke run; scale up after
+  total_timesteps: 100000          # paper runs (scripts/multiseed_headline.py)
   rollout_steps: 2000              # = env.max_steps (one episode per update)
   n_epochs: 4
   batch_size: 256

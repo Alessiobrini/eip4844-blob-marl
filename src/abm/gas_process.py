@@ -2,7 +2,7 @@
 
 Two implementations:
 - LogNormalRandomWalk: P_{t+1} = P_t * exp(N(mu, sigma^2))  [Bar-On & Mansour]
-- AR1Process: P_{t+1} = theta*mu + (1-theta)*P_t + sigma*eps  [Shouqiao et al.]
+- AR1Process: P_{t+1} = theta*mu + (1-theta)*P_t + sigma*eps  [Wang et al.]
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ class LogNormalRandomWalk(PriceProcess):
 class AR1Process(PriceProcess):
     """AR(1) mean-reverting process: P_{t+1} = theta*mu + (1-theta)*P_t + sigma*eps.
 
-    eps ~ N(0, 1).  Calibrated parameters from Shouqiao et al. (2505.19556):
+    eps ~ N(0, 1).  Calibrated parameters from Wang et al. (2505.19556):
     mu = 3.86e-8, theta = 0.1, sigma = 8.41e-9.
 
     Args:

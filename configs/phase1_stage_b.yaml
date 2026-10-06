@@ -1,4 +1,4 @@
-# Phase 1 Stage B: Shouqiao et al. (2505.19556) setup
+# Phase 1 Stage B: Wang, Crapis, and Moallemi (2505.19556) setup
 # Single rollup, Poisson arrivals, discrete blobs, calibrated AR(1) prices
 # Goal: DQN should recover threshold Q*(P_t), decreasing in price
 #

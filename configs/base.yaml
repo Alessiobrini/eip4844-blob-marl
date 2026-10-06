@@ -19,14 +19,14 @@ rollup:
 
 price_process:
   type: "ar1"                     # "log_normal_rw" | "ar1"
-  # AR(1) parameters (Shouqiao et al. calibration, Feb-Aug 2024)
+  # AR(1) defaults, overridden by configs/calibration.yaml
   mu: 3.86e-8                     # long-run mean gas price (wei/gas)
   theta: 0.1                      # mean-reversion speed
   sigma: 8.41e-9                  # volatility
   initial_price: 3.86e-8
   floor: 0.0                      # non-negativity clamp
   # Log-normal RW parameters (Bar-On & Mansour)
-  ln_mu: 0.0                      # drift (0 = martingale)
+  ln_mu: 0.0                      # log drift
   ln_sigma: 0.1                   # volatility
 
 blob_fee_process:

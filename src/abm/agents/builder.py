@@ -1,8 +1,7 @@
 """BuilderAgent: Mesa agent representing the block builder.
 
-In Phase 1, the builder is a pass-through (always includes all blob
-transactions).  In Phase 3, this will become a learning agent with its
-own RL policy.
+The builder is a pass-through that always includes all blob transactions.
+A learning builder is outside the scope of this code.
 """
 
 from __future__ import annotations

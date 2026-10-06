@@ -234,10 +234,10 @@ class MultiAgentBlobEnv:
 
         total_blobs = int(sum(blobs_by_agent.values()))
         # Enforce the per-block cap (6). If agents collectively exceed it,
-        # we clip the effective blob count for the fee update (the extras
-        # are treated as "not included this block" for fee purposes but
-        # we already drained the queues — acceptable for the MVP; builder
-        # rationing will be added in Phase 3).
+        # we clip the effective blob count for the fee update. The extras
+        # count as "not included this block" for the fee, while the queues
+        # are already drained and the costs already paid. The model has no
+        # builder-side rationing.
         effective_blobs = min(total_blobs, int(self.cfg.env.blob_max))
 
         # 4) Normalize costs.

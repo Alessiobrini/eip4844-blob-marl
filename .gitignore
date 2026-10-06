@@ -214,18 +214,20 @@ mlruns/
 notes/
 mlflow.db
 
-# Paper lives in its own repo (the paper repository), wired to Overleaf
+# Paper sources (kept separately)
 paper/
 
-# Claude Code / assistant files (not part of the public code repo)
+# Editor and assistant files
 CLAUDE.md
 .claude/
 
 # macOS
 .DS_Store
 
-# Internal assistant-generated reports (never public)
+# Local reports
 reports/
 
-# Downloaded third-party paper PDFs and internal lit review (kept local)
+# Local literature notes and third-party PDFs
 literature/
+literature.md
+SPEC.md

@@ -2,7 +2,7 @@
 
 Wraps a Mesa ABM with a single rollup agent and a pass-through builder.
 All behavior is controlled by config flags so the same class supports
-both Stage A (Bar-On & Mansour replication) and Stage B (Shouqiao et al.
+both Stage A (Bar-On & Mansour replication) and Stage B (Wang et al.
 relaxations).
 
 Config flags:

@@ -1,10 +1,13 @@
-"""Multi-seed re-runs of the three single-seed headline Phase 2 configs, so the
-paper can report mean +/- s.d. across seeds.
+"""Multi-seed runs of the four headline Phase 2 configs, so the paper can
+report mean +/- s.d. across seeds.
 
-Configs (each at 100k steps, reward_scale 0.01, to match the original headline runs):
-  - n5_congested : phase2.yaml, lambda_scale=100   (Fig 1 + Table 2)
-  - calldata     : phase2.yaml, lambda_scale=100, action_mode=with_calldata (Fig 3)
-  - n18          : phase2_n18.yaml, lambda_scale=300 (generality claim)
+Configs (each at 100k steps):
+  - n5_calibrated : phase2.yaml, lambda_scale=1 (Fig. 1, calibrated curve)
+  - n5_congested  : phase2.yaml, lambda_scale=100, reward_scale 0.01
+                    (Fig. 1 congested curve, Table III)
+  - calldata      : phase2.yaml, lambda_scale=100, reward_scale 0.01,
+                    action_mode=with_calldata (Fig. 4)
+  - n18           : phase2_n18.yaml, lambda_scale=300 (Fig. 3)
 
 Writes results/multiseed/manifest_<stamp>.csv with one row per (config, seed),
 recording the results_dir and the final-20%-window steady-state aggregate so

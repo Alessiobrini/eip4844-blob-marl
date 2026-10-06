@@ -49,7 +49,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--scales", type=float, nargs="+",
                         default=[10, 50, 100, 200, 500])
-    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 123])
+    parser.add_argument("--seeds", type=int, nargs="+", default=[42, 123, 7, 99, 2024])
     parser.add_argument("--steps", type=int, default=50000)
     args = parser.parse_args()
 

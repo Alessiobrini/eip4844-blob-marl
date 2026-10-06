@@ -5,7 +5,7 @@ These implement closed-form optimal policies from the literature:
 - ``BarOnMansourThreshold``: From Bar-On & Mansour (2312.06448).
   Post if price < 2*alpha*waiting_time / (1 - gamma).
 
-- ``ShouqiaoThreshold``: From Shouqiao et al. (2505.19556).
+- ``ShouqiaoThreshold``: From Wang, Crapis, and Moallemi (2505.19556).
   Post if queue > Q*(price).  Requires numerical computation (deferred).
 """
 

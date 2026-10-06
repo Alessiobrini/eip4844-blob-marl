@@ -25,7 +25,8 @@ EIP-4844 (Dencun, March 2024) gave rollups a dedicated data lane priced by a
 multiplicative update rule targeting 3 blobs per block. The rule is a
 negative-feedback controller, but whether the target is reached depends on
 how independent, self-interested rollups respond to the price they jointly
-create. Existing theory covers a single rollup under exogenous prices. This
+create. Existing theory covers a single rollup under exogenous prices or a
+static equilibrium. This
 project asks whether the protocol's intended operating point emerges when
 heterogeneous rollups learn how to post against an endogenous fee.
 
@@ -64,14 +65,18 @@ tests/         # 93 pytest tests: fee rule, queues, envs, price processes
 
 ## Setup
 
-Python 3.11 with conda:
+Python 3.11 with conda. Run every command from the repository root.
 
 ```bash
 conda create -n blob-abm python=3.11
 conda activate blob-abm
-pip install mesa>=3.0 gymnasium stable-baselines3 torch numpy pandas \
-    omegaconf mlflow matplotlib seaborn scipy pytest
+pip install -e ".[dev]"
 ```
+
+The editable install makes the `src` package importable, so the scripts below
+run as written. Without it, prefix each command with `PYTHONPATH=.`. The
+figure script renders text with LaTeX and needs a TeX installation. The data
+download needs `pip install google-cloud-bigquery`.
 
 Verify the installation (all 93 tests should pass):
 
@@ -81,10 +86,13 @@ pytest tests/ -v
 
 ## Data pipeline
 
-Raw data come from Google BigQuery's public `crypto_ethereum` dataset over
-the post-Dencun window (March 13 to August 31, 2024, 1,218,246 blocks).
-`data/` is gitignored; regenerate it with your own Google Cloud credentials
-(free tier suffices):
+Raw data come from Google BigQuery's public `crypto_ethereum` dataset.
+`fetch.py` downloads blocks and type-3 (blob) transactions from March 13, 2024
+to March 31, 2025. The AR(1) price fits use the calibration window from March
+13 to August 31, 2024 (1,218,246 blocks). Each arrival rate is the count of a
+rollup's blob-posting transactions over the full download, divided by the
+block count of that window. `data/` is gitignored. Regenerate it with your own
+Google Cloud credentials (the free tier suffices):
 
 ```bash
 # Download blocks and type-3 (blob) transactions to data/raw/
@@ -101,8 +109,13 @@ anything.
 ## Running experiments
 
 ```bash
-# Single-agent validation runs (DQN vs the analytical threshold policy)
-python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml
+# Single-agent validation runs (Table II), one command per row
+python src/experiments/phase1_single_agent.py --config configs/phase1_stage_a.yaml \
+    rl.total_timesteps=1000000 env.reward_scale=100
+python src/experiments/phase1_single_agent.py --config configs/phase1_stage_b.yaml \
+    rl.total_timesteps=1000000
+python src/experiments/phase1_single_agent.py --config configs/phase1_stage_b.yaml \
+    blob_fee_process.mu=30 blob_fee_process.sigma=0.8
 
 # Multi-agent headline run (N=5 rollups, independent PPO, endogenous fee)
 python src/experiments/phase2_marl.py --config configs/phase2.yaml \
@@ -112,9 +125,11 @@ python src/experiments/phase2_marl.py --config configs/phase2.yaml \
 python src/experiments/phase2_marl.py --config configs/phase2_n18.yaml
 ```
 
-Every run writes `results/{timestamp}_{config_hash}/` with the resolved
-config, per-update metrics (`history.csv`), and policy checkpoints, and logs
-to MLflow. All randomness is seeded through the configs.
+Single-agent runs write `results/{timestamp}_{config_hash}/` with the
+resolved config and the policy checkpoint. Multi-agent runs write
+`results/phase2_{timestamp}_{config_hash}/` with the resolved config,
+per-update metrics (`history.csv`), and the policy checkpoints. All
+randomness is seeded through the configs.
 
 ## Reproducing the paper
 
@@ -124,22 +139,24 @@ window.
 
 | Paper exhibit | Script |
 |---|---|
-| Tab. I, AR(1) calibration | `src/data/calibration.py` |
-| Tab. II, single-agent validation | `notebooks/validation_table.py` |
-| Fig. 1 and Tab. III, headline N=5 runs | `scripts/multiseed_headline.py` |
-| Fig. 2, phase diagram (10x to 500x) | `scripts/sweep_phase_diagram.py` |
+| Table I, AR(1) calibration | `src/data/calibration.py` |
+| Table II, single-agent validation | `notebooks/validation_table.py` |
+| Fig. 1 and Table III, headline N=5 runs | `scripts/multiseed_headline.py` |
+| Fig. 2, phase diagram (10x to 500x, 5x10^4 steps) | `scripts/sweep_phase_diagram.py` |
 | Fig. 3, 18-rollup generality | `scripts/multiseed_headline.py` (n18 config) |
 | Fig. 4, calldata outside option | `scripts/multiseed_headline.py` (calldata config) |
-| Non-learning baselines (Sec. V) | `scripts/rule_based_baselines.py` |
-| Fixed delay-coefficient ablation (Sec. V) | `scripts/fixed_alpha_ablation.py` |
-| Cap-binding footnote (Sec. III) | `scripts/measure_cap_binding.py` |
-| Target sweep b* in {2,3,4} (Sec. VI) | `scripts/blobtarget_sweep.py` |
+| Non-learning baselines (Section V) | `scripts/rule_based_baselines.py` |
+| Fixed delay-coefficient ablation (Section V) | `scripts/fixed_alpha_ablation.py` |
+| Cap-binding footnote (Section III) and PPO costs in normalized units (Section V) | `scripts/measure_cap_binding.py` |
+| Target sweep b* in {2,3,4} (Section VI) | `scripts/blobtarget_sweep.py` |
 | All figure PDFs | `notebooks/paper_figures.py` |
 
 `notebooks/paper_figures.py` and `notebooks/validation_table.py` are the
-source of truth for the shipped figures and validation numbers. They read
-the local `results/` tree produced by the scripts above and recompute every
-headline statistic.
+source of truth for the figures and validation numbers. They read the local
+`results/` tree produced by the scripts above and recompute every headline
+statistic. The run folders and result files they read are named at the top of
+each script (`SWEEP_CSV`, `RUNS`, and the manifests in `results/multiseed/`),
+so point those names at your own runs after regenerating them.
 
 ## Configuration
 
@@ -158,8 +175,7 @@ The project is concluded through the paper's scope: single-agent validation
 against the analytical threshold policy and multi-agent experiments with an
 endogenous fee (headline convergence, phase diagram, 18-rollup roster,
 calldata outside option, baselines, and ablations). A learning builder and
-cooperative blob sharing, Phases 3 and 4 of the original design in
-`SPEC.md`, remain future work.
+cooperative blob sharing remain future work.
 
 ## Key references
 
