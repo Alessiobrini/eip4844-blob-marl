@@ -35,7 +35,10 @@ LAMBDA = {
 N5 = ["taiko", "base", "arbitrum_one", "scroll", "world_chain"]
 TAIL_FRAC = 5  # final 1/TAIL_FRAC of rollouts = final 20% window
 
-COL_W, FULL_W = 3.45, 7.0
+# IEEEtran conference text block (A4): \textwidth 516pt, \columnwidth 252pt.
+# Every figure is built at the exact width it is included at in main.tex
+# (\textwidth or \columnwidth), so its fonts print at their nominal size.
+COL_W, FULL_W = 252.0 / 72.27, 516.0 / 72.27
 plt.rcParams.update({
     "font.size": 8, "font.family": "serif",
     "font.serif": ["Computer Modern Roman"],
@@ -92,7 +95,7 @@ def fig_convergence() -> None:
             ax.plot(steps, m, color=color, label=label)
             ax.fill_between(steps, m - s, m + s, color=color, alpha=0.25)
 
-    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.5), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 1.5), constrained_layout=True)
     ax = axes[0]
     band(ax, cal_b, "C0", r"Calibrated (empirical $\lambda$)")
     band(ax, cong_b, "C3", r"Congested ($\lambda{\times}100$)")
@@ -101,7 +104,8 @@ def fig_convergence() -> None:
     ax.set_xlabel("Training step")
     ax.set_ylabel("Blobs per block")
     ax.set_title("(a) Aggregate blob supply")
-    ax.legend(loc="center right")
+    ax.set_ylim(0.9, 4.6)
+    ax.legend(loc="lower right", bbox_to_anchor=(1.0, 0.1), ncol=2)
     ax.grid(alpha=0.3)
 
     ax = axes[1]
@@ -129,7 +133,8 @@ def fig_n18() -> None:
                    for r in roster])
     pf_m, pf_s = pf.mean(1), pf.std(1)
 
-    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 2.6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(FULL_W, 1.6), constrained_layout=True,
+                             gridspec_kw={"width_ratios": [1, 1.5]})
     ax = axes[0]
     m, s = blobs.mean(0), blobs.std(0)
     ax.plot(steps, m, color="C3", label=r"Aggregate supply (mean $\pm$ s.d.)")
@@ -146,11 +151,11 @@ def fig_n18() -> None:
     x = np.arange(len(roster))
     ax.bar(x, pf_m, yerr=pf_s, capsize=2, ecolor="0.3", color="steelblue", alpha=0.85)
     ax.set_xticks(x)
-    ax.set_xticklabels([r.replace("_", "-") for r in roster], rotation=60,
-                       ha="right", fontsize=6)
+    ax.set_xticklabels([r.replace("_", "-") for r in roster], rotation=45,
+                       ha="right", rotation_mode="anchor", fontsize=7)
     ax.set_ylabel("Posting freq.")
     ax.set_ylim(0, 1.05)
-    ax.set_title(r"(b) Per-rollup posting frequency (ordered by $\lambda_i$)")
+    ax.set_title(r"(b) Per-rollup posting frequency")
     ax.grid(alpha=0.3, axis="y")
     fig.savefig(OUT / "fig_n18.pdf")
     plt.close(fig)
@@ -162,7 +167,7 @@ def fig_phase_diagram() -> None:
         mean=("blobs_per_block_mean", "mean"),
         std=("blobs_per_block_mean", "std"),
     ).reset_index()
-    fig, ax = plt.subplots(figsize=(COL_W, 2.7), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(COL_W, 1.65), constrained_layout=True)
     ax.errorbar(agg["lambda_scale"], agg["mean"], yerr=agg["std"],
                 marker="o", color="C0", capsize=3, linewidth=1.3)
     ax.axhline(3.0, color="k", linestyle="--", linewidth=0.8, alpha=0.6,
@@ -190,7 +195,7 @@ def fig_calldata() -> None:
     cd_s = cd.std(1)
     wait_m = 1.0 - blob_m - cd_m
 
-    fig, ax = plt.subplots(figsize=(COL_W, 2.8), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(COL_W, 1.65), constrained_layout=True)
     idx = np.arange(len(N5))
     ax.bar(idx, blob_m, label="Blob", color="C0", alpha=0.85)
     ax.bar(idx, cd_m, bottom=blob_m, yerr=cd_s, capsize=2, ecolor="0.3",
